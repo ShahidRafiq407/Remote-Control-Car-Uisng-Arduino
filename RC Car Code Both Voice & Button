@@ -1,0 +1,103 @@
+#include <SoftwareSerial.h>
+SoftwareSerial BT(2, 3); // RX, TX for HC-05 (Connect HC-05 TX to Pin 2, RX to Pin 3)
+
+// Motor A pins
+int ENA = 4;
+int IN1 = 8;
+int IN2 = 9;
+
+// Motor B pins
+int ENB = 6;
+int IN3 = 10;
+int IN4 = 11;
+
+String command = ""; // String to store voice or button command
+
+void setup() {
+  BT.begin(9600); // HC-05 baud rate
+  Serial.begin(9600); // Serial monitor for debug
+  BT.setTimeout(50);  // Important: Makes reading faster so car doesn't lag
+
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  Serial.println("Car Ready. Use Voice or Buttons.");
+}
+
+void forward() {
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+  analogWrite(ENA, 255); analogWrite(ENB, 255);
+  Serial.println("Moving Forward");
+}
+
+void backward() {
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+  analogWrite(ENA, 255); analogWrite(ENB, 255);
+  Serial.println("Moving Backward");
+}
+
+void leftTurn() {
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+  analogWrite(ENA, 180); analogWrite(ENB, 180); // Speed slightly reduced for turn
+  Serial.println("Turning Left");
+}
+
+void rightTurn() {
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+  analogWrite(ENA, 180); analogWrite(ENB, 180); // Speed slightly reduced for turn
+  Serial.println("Turning Right");
+}
+
+void stopCar() {
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+  analogWrite(ENA, 0); analogWrite(ENB, 0);
+  Serial.println("Car Stopped");
+}
+
+void loop() {
+  // Check if data is coming from Bluetooth
+  if (BT.available()) {
+    
+    // Read the incoming data as a String instead of Char
+    command = BT.readString();
+    
+    // Remove extra spaces or new lines (Essential for voice)
+    command.trim(); 
+
+    // Debugging: Show what Arduino received in Serial Monitor
+    Serial.print("Received: ");
+    Serial.println(command);
+
+    // --- LOGIC: Checks both Voice Words AND Button Letters ---
+
+    // FORWARD: App sends "forward" or "go" OR Button sends 'U' (Up) or 'F'
+    if (command == "forward" || command == "go" || command == "U" || command == "F") {
+      forward();
+    }
+    // BACKWARD: App sends "backward" or "back" OR Button sends 'D' (Down) or 'B'
+    else if (command == "backward" || command == "back" || command == "D" || command == "B") {
+      backward();
+    }
+    // LEFT: App sends "left" OR Button sends 'L'
+    else if (command == "left" || command == "turn left" || command == "L") {
+      leftTurn();
+    }
+    // RIGHT: App sends "right" OR Button sends 'R'
+    else if (command == "right" || command == "turn right" || command == "R") {
+      rightTurn();
+    }
+    // STOP: App sends "stop" OR Button sends 'S'
+    else if (command == "stop" || command == "halt" || command == "S") {
+      stopCar();
+    }
+  }
+}
