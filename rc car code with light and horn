@@ -1,0 +1,211 @@
+#include <SoftwareSerial.h>
+
+// Bluetooth Module Pins (RX, TX)
+SoftwareSerial BT(2, 3); // Arduino Pin 2 to BT TX, Pin 3 to BT RX
+
+// -------- Motor A (Right Motor) --------
+const int ENA = 10; // PWM Speed Pin
+const int IN1 = 4;
+const int IN2 = 5;
+
+// -------- Motor B (Left Motor) --------
+const int ENB = 6;  // PWM Speed Pin
+const int IN3 = 8;
+const int IN4 = 9;
+
+// -------- Accessories --------
+const int frontLight = 11; // Front Lights
+const int backLight = 7;   // Back Lights
+const int buzzer = 12;     // Horn
+
+// -------- Variables --------
+char command;      // Stores the command from App
+int carSpeed = 255; // Default Speed (0 - 255)
+
+void setup() {
+  // Serial Monitor for Debugging
+  Serial.begin(9600);
+  
+  // Bluetooth Serial
+  BT.begin(9600); 
+
+  // Output Pins Configuration
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  
+  pinMode(frontLight, OUTPUT);
+  pinMode(backLight, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  // Initial State: Stop Everything
+  stopCar();
+  digitalWrite(frontLight, LOW);
+  digitalWrite(backLight, LOW);
+  digitalWrite(buzzer, LOW);
+
+  Serial.println("System Ready! Waiting for Bluetooth Commands...");
+}
+
+void loop() {
+  // Check if data is available from Bluetooth
+  if (BT.available()) {
+    command = BT.read(); // Read the character
+    
+    // Serial Monitor par print karein taake pata chalay kia aya hai
+    Serial.print("Command Received: ");
+    Serial.println(command);
+
+    // Command Handling
+    switch (command) {
+      // --- Movement Commands ---
+      case 'R': moveForward(); break;
+      case 'L': moveBackward(); break;
+      case 'F': turnLeft(); break;
+      case 'B': turnRight(); break;
+      case 'G': forwardLeft(); break;
+      case 'I': forwardRight(); break;
+      case 'H': backLeft(); break;
+      case 'J': backRight(); break;
+      case 'S': stopCar(); break;
+
+      // --- Front Lights (W = On, w = Off) ---
+      case 'W': 
+        digitalWrite(frontLight, HIGH); 
+        Serial.println(">> Front Lights ON");
+        break;
+      case 'w': 
+        digitalWrite(frontLight, LOW); 
+        Serial.println(">> Front Lights OFF");
+        break;
+
+      // --- Back Lights (U = On, u = Off) ---
+      case 'U': 
+        digitalWrite(backLight, HIGH); 
+        Serial.println(">> Back Lights ON");
+        break;
+      case 'u': 
+        digitalWrite(backLight, LOW); 
+        Serial.println(">> Back Lights OFF");
+        break;
+
+      // --- Horn / Buzzer (V = On, v = Off) ---
+      case 'V': 
+        digitalWrite(buzzer, HIGH); 
+        Serial.println(">> Horn ON 🔊");
+        break;
+      case 'v': 
+        digitalWrite(buzzer, LOW); 
+        Serial.println(">> Horn OFF");
+        break;
+
+      // --- Speed Control (Optional: 0 to 9, q=100%) ---
+      // Agar app slider use karein to ye kaam ayega
+      case '0': carSpeed = 0; break;
+      case '1': carSpeed = 25; break;
+      case '2': carSpeed = 50; break;
+      case '3': carSpeed = 75; break;
+      case '4': carSpeed = 100; break;
+      case '5': carSpeed = 125; break;
+      case '6': carSpeed = 150; break;
+      case '7': carSpeed = 175; break;
+      case '8': carSpeed = 200; break;
+      case '9': carSpeed = 225; break;
+      case 'q': carSpeed = 255; break;
+    }
+  }
+}
+
+// ==========================================
+//          MOTOR FUNCTIONS
+// ==========================================
+
+void moveForward() {
+  Serial.println("Action: Moving Forward");
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed);
+  
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+}
+
+void moveBackward() {
+  Serial.println("Action: Moving Backward");
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed);
+
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+}
+
+void turnLeft() {
+  Serial.println("Action: Turning Left");
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed);
+
+  // Left lene ke liye: Right motor agay, Left motor peechay (Tank Turn)
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);  // Right Fwd
+  digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH); // Left Back
+}
+
+void turnRight() {
+  Serial.println("Action: Turning Right");
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed);
+
+  // Right lene ke liye: Left motor agay, Right motor peechay
+  digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH); // Right Back
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);  // Left Fwd
+}
+
+void stopCar() {
+  Serial.println("Action: Stopped");
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+  
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+}
+
+// --- Diagonal Movements (Smooth Turns) ---
+
+void forwardLeft() {
+  Serial.println("Action: Forward Left");
+  // Left Motor Dheemi, Right Tez
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed / 4); 
+  
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+}
+
+void forwardRight() {
+  Serial.println("Action: Forward Right");
+  // Right Motor Dheemi, Left Tez
+  analogWrite(ENA, carSpeed / 4);
+  analogWrite(ENB, carSpeed);
+  
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+}
+
+void backLeft() {
+  Serial.println("Action: Back Left");
+  analogWrite(ENA, carSpeed);
+  analogWrite(ENB, carSpeed / 4);
+  
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+}
+
+void backRight() {
+  Serial.println("Action: Back Right");
+  analogWrite(ENA, carSpeed / 4);
+  analogWrite(ENB, carSpeed);
+  
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+}
